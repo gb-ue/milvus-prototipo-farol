@@ -12,7 +12,7 @@ model, preprocess = clip.load("ViT-B/32")
 model.eval()
 
 #gera o embedding da imagem a partir de um caminho processado pelo process data (abaixo)
-def encode_image_milvus(img:Image): 
+def encode_image_milvus(img: Image): 
     preprocessed_clip_img = preprocess(img).unsqueeze(0)
     with torch.no_grad:
         image_features = model.encode_image(preprocessed_clip_img)
@@ -24,7 +24,7 @@ def encode_image_milvus(img:Image):
     return image_features.squeeze().tolist()
 
 # gera um vector do phash criado dentro do process data
-def phash_to_vector(phash_str):
+def phash_to_vector(phash_str: str):
     binary = bin(int(phash_str, 16))[2:].zfill(64)
 
     return [float(bit) for bit in binary]
