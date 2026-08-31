@@ -3,3 +3,5 @@
 #...o servidor milvus
 #fazer o mesmo para o phash (uma próxima etapa pode ser ver como 
 #...paralelizar isso)
+
+# a intenção é fazer um ambiente de demonstração pelo que entendi
