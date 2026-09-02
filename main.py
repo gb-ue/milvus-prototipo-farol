@@ -6,12 +6,16 @@
 
 # a intenção é fazer um ambiente de demonstração pelo que entendi
 
-from pymilvus import MilvusClient, connections, list_collections, Collection, FieldSchema, CollectionSchema, DataType, SearchResult
+from module_milvus import *
+from module_images import process_data
 
 def main() -> None:
 
     connections.connect(alias="default", host="localhost", port="19530")
 
-    collection = create_
+    collection = create_collection(drop=True)
+    dir_path = ""
+
+    process_data(dir_path, collection)
 
     return
