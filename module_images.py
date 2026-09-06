@@ -13,8 +13,12 @@ model.eval()
 
 #gera o embedding da imagem a partir de um caminho processado pelo process data (abaixo)
 def encode_image_milvus(img: Image): 
+
+    img = img.convert("RGB")
+
     preprocessed_clip_img = preprocess(img).unsqueeze(0)
-    with torch.no_grad:
+
+    with torch.no_grad():
         image_features = model.encode_image(preprocessed_clip_img)
     
     image_features /= image_features.norm(
@@ -41,6 +45,7 @@ def process_data(folder_path:str, collection:Collection):
     
         if file.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".jfif")):
             filepath = os.path.join(folder_path, file)
+            print("\nProcessando:", filepath)
 
             try:
                 img = Image.open(filepath)
@@ -49,10 +54,14 @@ def process_data(folder_path:str, collection:Collection):
                 phash = str(imagehash.phash(img))
                 vector = phash_to_vector(phash)
 
+                print("Embedding:", len(emb))
+                print("pHash:", phash)
+                print("Vector:", len(vector))
+
                 paths.append(filepath)
                 phashes.append(phash)
                 vectors.append(vector)
-                embeddings.append(emb.tolist())
+                embeddings.append(emb)
                 
             except Exception as e:
                 print(f"A imagem {filepath} possui um erro inexperado:\n{e}")
@@ -60,3 +69,6 @@ def process_data(folder_path:str, collection:Collection):
     if paths:
         collection.insert([paths, embeddings, phashes, vectors])
         collection.flush()
+
+    else:
+        print("\nNENHUMA IMAGEM FOI PROCESSADA!")

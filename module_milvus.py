@@ -1,5 +1,6 @@
 from pymilvus import MilvusClient, list_collections, Collection, FieldSchema, CollectionSchema, DataType, SearchResult, milvus_client, connections, utility
 from module_images import encode_image_milvus, phash_to_vector
+from PIL import Image
 
 #client = MilvusClient("milvus_demo.db") 
 
@@ -15,34 +16,18 @@ from module_images import encode_image_milvus, phash_to_vector
 #
 #
 #
-
-#restirar para colocar na main*
-def create_index(collection:Collection):
-    collection.create_index("embedding"), {
-        "index_type": "IVF_FLAT",
-        "metric_type": "COSINE",
-        "params": {"nlist": 1024}
-    }
     
-def create_collection(collection_name:str, drop: bool):
-    
-    if milvus_client.has_collection(collection_name=collection_name):
-        milvus_client.drop_collection(collection_name=collection_name)
+def create_collection(collection_name:str, drop:bool= False):
 
-    if utility.has_collection(collection_name):
-        milvus_client.create_collection(
-            collection_name,
-        )
-
-    elif "image_embeddings" in list_collections():
-        Collection("image_embeddings").drop()
+    if utility.has_collection(collection_name) and drop:
+        utility.drop_collection(collection_name)
 
     fields = [
         FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
         FieldSchema(name="path", dtype=DataType.VARCHAR, max_length=500),
         FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=512),
         FieldSchema(name="phash", dtype=DataType.VARCHAR, max_length=64),
-        FieldSchema(name="vectore", dtype=DataType.FLOAT_VECTOR, max_length=64),
+        FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=64),
         ]
     schema = CollectionSchema(fields, description="Image Similarity Search")
 
@@ -61,39 +46,24 @@ def create_collection(collection_name:str, drop: bool):
             "nlist": 512,
         },
     }
-    
-    milvus_client.create_collection(
-        collection_name="image_embeddings",
-        schema=schema
-        )
 
-    milvus_client.create_index(
+    collection = Collection(
+        name=collection_name,
+        schema=schema,
+    )
+
+    collection.create_index(
         field_name="vector",
-        index_params=index_params_vector
+        index_params=index_params_vector,
     )
 
-    milvus_client.create_index(
-        field_name="embeddings",
-        index_params=index_params_embeddings
+    collection.create_index(
+        field_name="embedding",
+        index_params=index_params_embeddings,
     )
 
-#restirar para colocar na main*
-def create_embedding_collection():
+    return collection
 
-    fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True), 
-        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=512),
-        FieldSchema(name="path", dtype=DataType.VARCHAR, max_length=500)
-        ]
-    schema = CollectionSchema(fields, description="Image Similarity Search")
-    
-    if "image_embeddings" in list_collections():
-        Collection("image_embeddings").drop()
-    
-    milvus_client.create_collection(
-        collection_name="image_embeddings",
-        schema=schema
-        )
 
 # definir função de busca vetorial (por enquanto buscar o top 5 mais semelhantes pode ser útil a nível de demonstração)
 # 
@@ -102,7 +72,9 @@ def create_embedding_collection():
 
 def search_image_by_similarity(img_path:str, collection:Collection, top_k:int = 5) -> SearchResult:
 
-    embedding_from_image = encode_image_milvus(img_path)
+    img = Image.open(img_path)
+
+    embedding_from_image = encode_image_milvus(img)
 
     result_image_similarity = collection.search(
         data=[embedding_from_image],
@@ -119,6 +91,27 @@ def search_image_by_similarity(img_path:str, collection:Collection, top_k:int = 
             "embedding"
         ],
     )
+    
+        # Resultados
+    for i, hit in enumerate(result_image_similarity[0]):
+           
+            img_path_hit = hit.entity.get("path")
+            score = hit.score
+            threshold = 0.95
+
+            if score >= threshold and img_path_hit != img_path:
+                img_path_hit_expr = img_path_hit.replace("\\", "/")
+
+                collection.delete(
+                    expr=f'path == "{img_path_hit_expr}"'
+                )
+                collection.delete(expr=f'path == "{img_path_hit_expr}"')
+                collection.flush()
+                collection.compact()
+                print(f"Imagem {img_path_hit} deletada ({score:.4f}: Imagem duplicada.)")
+
+            print(f"{i + 1}. Score: {score:.4f} | Path: {img_path_hit}")   
+
     return result_image_similarity
 
 def search_image_by_phash(phash:str, collection:Collection, top_k:int = 5) -> SearchResult:
@@ -143,7 +136,3 @@ def search_image_by_phash(phash:str, collection:Collection, top_k:int = 5) -> Se
     )
 
     return result_phash_search
-
-#restirar para colocar na main*
-def start_connection():
-    connections.connect(alias="default", host="localhost", port="19530")

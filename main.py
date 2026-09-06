@@ -13,9 +13,16 @@ def main() -> None:
 
     connections.connect(alias="default", host="localhost", port="19530")
 
-    collection = create_collection(drop=True)
-    dir_path = ""
+    collection = create_collection("image_data_farol", drop=True)
+    #exemplo hardcodado
+    dir_path = "C:\\Users\\user\\Documents\\vscode-stuff\\Trabalho\\OCR\\PIDF"
 
     process_data(dir_path, collection)
 
-    return
+    print("ENTIDADES NO MILVUS:", collection.num_entities)
+
+    collection.load()
+
+    search_image_by_similarity("c:\\Users\\user\\Documents\\vscode-stuff\\Trabalho\\OCR\\PIDF\\0008a8c8129cc1d79a25299904f84931.jpg", collection)
+
+main()
